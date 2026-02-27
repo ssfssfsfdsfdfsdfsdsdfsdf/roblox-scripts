@@ -1,304 +1,159 @@
--- ===============================
---   Universal Cheat GUI Script
---   Draggable | Toggle Cheats
--- ===============================
-
+-- Simple version, more compatible
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
-local LocalPlayer = Players.LocalPlayer
+local lp = Players.LocalPlayer
 
--- ===============================
---        CHEAT VARIABLES
--- ===============================
-local speedValue = 100
-local flySpeed = 60
-local flying = false
-local godModeOn = false
-local speedOn = false
-local bodyVelocity, bodyGyro
+-- GUI Setup
+local gui = Instance.new("ScreenGui")
+gui.ResetOnSpawn = false
+gui.Name = "CheatGUI"
 
--- ===============================
---        CREATE GUI
--- ===============================
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "CheatGUI"
-ScreenGui.ResetOnSpawn = false
-ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-
--- Try to parent to CoreGui to survive games
 pcall(function()
-    ScreenGui.Parent = game:GetService("CoreGui")
+    gui.Parent = game:GetService("CoreGui")
 end)
-if not ScreenGui.Parent then
-    ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+if not gui.Parent then
+    gui.Parent = lp.PlayerGui
 end
 
 -- Main Frame
-local MainFrame = Instance.new("Frame")
-MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 220, 0, 320)
-MainFrame.Position = UDim2.new(0, 50, 0, 50)
-MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
-MainFrame.BorderSizePixel = 0
-MainFrame.Active = true
-MainFrame.Draggable = true  -- Makes it draggable!
-MainFrame.Parent = ScreenGui
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 200, 0, 280)
+frame.Position = UDim2.new(0, 50, 0, 50)
+frame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Draggable = true
+frame.Parent = gui
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
 
--- Rounded corners
-local UICorner = Instance.new("UICorner")
-UICorner.CornerRadius = UDim.new(0, 10)
-UICorner.Parent = MainFrame
+-- Title
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 35)
+title.BackgroundColor3 = Color3.fromRGB(90, 60, 200)
+title.Text = "⚡ Cheat Menu"
+title.TextColor3 = Color3.new(1,1,1)
+title.TextSize = 15
+title.Font = Enum.Font.GothamBold
+title.BorderSizePixel = 0
+title.Parent = frame
+Instance.new("UICorner", title).CornerRadius = UDim.new(0, 8)
 
--- Stroke/outline
-local UIStroke = Instance.new("UIStroke")
-UIStroke.Color = Color3.fromRGB(100, 80, 255)
-UIStroke.Thickness = 2
-UIStroke.Parent = MainFrame
-
--- Title Bar
-local TitleBar = Instance.new("Frame")
-TitleBar.Size = UDim2.new(1, 0, 0, 40)
-TitleBar.BackgroundColor3 = Color3.fromRGB(100, 80, 255)
-TitleBar.BorderSizePixel = 0
-TitleBar.Parent = MainFrame
-
-local TitleCorner = Instance.new("UICorner")
-TitleCorner.CornerRadius = UDim.new(0, 10)
-TitleCorner.Parent = TitleBar
-
--- Title Text
-local TitleLabel = Instance.new("TextLabel")
-TitleLabel.Size = UDim2.new(1, -10, 1, 0)
-TitleLabel.Position = UDim2.new(0, 10, 0, 0)
-TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "⚡ Cheat Menu"
-TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-TitleLabel.TextSize = 16
-TitleLabel.Font = Enum.Font.GothamBold
-TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
-TitleLabel.Parent = TitleBar
-
--- Close Button
-local CloseBtn = Instance.new("TextButton")
-CloseBtn.Size = UDim2.new(0, 30, 0, 30)
-CloseBtn.Position = UDim2.new(1, -35, 0, 5)
-CloseBtn.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
-CloseBtn.Text = "X"
-CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-CloseBtn.TextSize = 14
-CloseBtn.Font = Enum.Font.GothamBold
-CloseBtn.BorderSizePixel = 0
-CloseBtn.Parent = TitleBar
-
-local CloseCorner = Instance.new("UICorner")
-CloseCorner.CornerRadius = UDim.new(0, 6)
-CloseCorner.Parent = CloseBtn
-
--- ===============================
---      BUTTON CREATOR FUNCTION
--- ===============================
-local buttonYPos = 50 -- starting Y position for buttons
-
-local function createButton(labelText, color)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 180, 0, 40)
-    btn.Position = UDim2.new(0, 20, 0, buttonYPos)
-    btn.BackgroundColor3 = color or Color3.fromRGB(60, 60, 80)
-    btn.Text = labelText
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.TextSize = 14
-    btn.Font = Enum.Font.GothamBold
-    btn.BorderSizePixel = 0
-    btn.Parent = MainFrame
-
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
-    corner.Parent = btn
-
-    buttonYPos = buttonYPos + 55 -- move next button down
-    return btn
+-- Button maker
+local function makeBtn(text, ypos)
+    local b = Instance.new("TextButton")
+    b.Size = UDim2.new(0, 170, 0, 45)
+    b.Position = UDim2.new(0, 15, 0, ypos)
+    b.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+    b.Text = text
+    b.TextColor3 = Color3.new(1,1,1)
+    b.TextSize = 13
+    b.Font = Enum.Font.GothamBold
+    b.BorderSizePixel = 0
+    b.Parent = frame
+    Instance.new("UICorner", b).CornerRadius = UDim.new(0, 6)
+    return b
 end
 
--- Status label
-local StatusLabel = Instance.new("TextLabel")
-StatusLabel.Size = UDim2.new(1, -20, 0, 20)
-StatusLabel.Position = UDim2.new(0, 10, 1, -28)
-StatusLabel.BackgroundTransparency = 1
-StatusLabel.Text = "Ready!"
-StatusLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
-StatusLabel.TextSize = 12
-StatusLabel.Font = Enum.Font.Gotham
-StatusLabel.Parent = MainFrame
+local godBtn   = makeBtn("🛡️ God Mode: OFF", 45)
+local spdBtn   = makeBtn("⚡ Speed: OFF",    100)
+local flyBtn   = makeBtn("🚀 Fly: OFF",      155)
+local closeBtn = makeBtn("❌ Close",          215)
 
-local function setStatus(msg)
-    StatusLabel.Text = "▶ " .. msg
-end
+closeBtn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
 
--- Create all buttons
-local GodBtn   = createButton("🛡️ God Mode: OFF", Color3.fromRGB(60, 60, 80))
-local SpeedBtn = createButton("⚡ Speed: OFF",     Color3.fromRGB(60, 60, 80))
-local FlyBtn   = createButton("🚀 Fly: OFF",       Color3.fromRGB(60, 60, 80))
-
--- ===============================
---        CHEAT FUNCTIONS
--- ===============================
+-- State
+local godOn, spdOn, flyOn = false, false, false
+local bv, bg
 
 -- GOD MODE
-local function toggleGodMode()
-    godModeOn = not godModeOn
-    if godModeOn then
-        GodBtn.BackgroundColor3 = Color3.fromRGB(50, 180, 80)
-        GodBtn.Text = "🛡️ God Mode: ON"
-        setStatus("God Mode ON!")
-        RunService.Heartbeat:Connect(function()
-            if not godModeOn then return end
-            pcall(function()
-                local char = LocalPlayer.Character
-                if char then
-                    local hum = char:FindFirstChild("Humanoid")
-                    if hum then
-                        hum.MaxHealth = math.huge
-                        hum.Health = math.huge
-                    end
-                end
-            end)
-        end)
-    else
-        GodBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
-        GodBtn.Text = "🛡️ God Mode: OFF"
-        setStatus("God Mode OFF")
-    end
-end
-
--- SPEED
-local function toggleSpeed()
-    speedOn = not speedOn
-    if speedOn then
-        SpeedBtn.BackgroundColor3 = Color3.fromRGB(50, 180, 80)
-        SpeedBtn.Text = "⚡ Speed: ON"
-        setStatus("Speed ON!")
-        RunService.Heartbeat:Connect(function()
-            if not speedOn then return end
-            pcall(function()
-                local char = LocalPlayer.Character
-                if char then
-                    local hum = char:FindFirstChild("Humanoid")
-                    if hum then hum.WalkSpeed = speedValue end
-                end
-            end)
-        end)
-    else
-        SpeedBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
-        SpeedBtn.Text = "⚡ Speed: OFF"
-        setStatus("Speed OFF")
-        pcall(function()
-            local hum = LocalPlayer.Character:FindFirstChild("Humanoid")
-            if hum then hum.WalkSpeed = 16 end
-        end)
-    end
-end
-
--- FLY
-local function startFly()
-    local char = LocalPlayer.Character
-    if not char then return end
-    local root = char:FindFirstChild("HumanoidRootPart")
-    local hum = char:FindFirstChild("Humanoid")
-    if not root or not hum then return end
-
-    bodyVelocity = Instance.new("BodyVelocity")
-    bodyVelocity.Velocity = Vector3.zero
-    bodyVelocity.MaxForce = Vector3.new(1e9, 1e9, 1e9)
-    bodyVelocity.Parent = root
-
-    bodyGyro = Instance.new("BodyGyro")
-    bodyGyro.MaxTorque = Vector3.new(1e9, 1e9, 1e9)
-    bodyGyro.D = 100
-    bodyGyro.Parent = root
-
-    hum.PlatformStand = true
-    flying = true
-
-    RunService.Heartbeat:Connect(function()
-        if not flying then return end
-        pcall(function()
-            local cam = workspace.CurrentCamera
-            local dir = Vector3.zero
-            if UserInputService:IsKeyDown(Enum.KeyCode.W) then dir += cam.CFrame.LookVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.S) then dir -= cam.CFrame.LookVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.A) then dir -= cam.CFrame.RightVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.D) then dir += cam.CFrame.RightVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then dir += Vector3.new(0,1,0) end
-            if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then dir -= Vector3.new(0,1,0) end
-
-            bodyVelocity.Velocity = dir.Magnitude > 0 and dir.Unit * flySpeed or Vector3.zero
-            bodyGyro.CFrame = cam.CFrame
-        end)
-    end)
-end
-
-local function stopFly()
-    flying = false
-    pcall(function()
-        local char = LocalPlayer.Character
-        if char then
-            local hum = char:FindFirstChild("Humanoid")
-            if hum then hum.PlatformStand = false end
-        end
-        if bodyVelocity then bodyVelocity:Destroy() end
-        if bodyGyro then bodyGyro:Destroy() end
-    end)
-end
-
-local function toggleFly()
-    flying = not flying
-    if flying then
-        FlyBtn.BackgroundColor3 = Color3.fromRGB(50, 180, 80)
-        FlyBtn.Text = "🚀 Fly: ON"
-        setStatus("Flying! WASD to move")
-        startFly()
-    else
-        FlyBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
-        FlyBtn.Text = "🚀 Fly: OFF"
-        setStatus("Fly OFF")
-        stopFly()
-    end
-end
-
--- ===============================
---        BUTTON CLICKS
--- ===============================
-GodBtn.MouseButton1Click:Connect(toggleGodMode)
-SpeedBtn.MouseButton1Click:Connect(toggleSpeed)
-FlyBtn.MouseButton1Click:Connect(toggleFly)
-
-CloseBtn.MouseButton1Click:Connect(function()
-    ScreenGui:Destroy()
+godBtn.MouseButton1Click:Connect(function()
+    godOn = not godOn
+    godBtn.BackgroundColor3 = godOn and Color3.fromRGB(40,160,70) or Color3.fromRGB(50,50,70)
+    godBtn.Text = godOn and "🛡️ God Mode: ON" or "🛡️ God Mode: OFF"
 end)
 
--- ===============================
---        HOVER EFFECTS
--- ===============================
-local function addHover(btn, activeColor)
-    btn.MouseEnter:Connect(function()
-        TweenService:Create(btn, TweenInfo.new(0.2), {
-            BackgroundColor3 = activeColor or Color3.fromRGB(80, 80, 110)
-        }):Play()
-    end)
-    btn.MouseLeave:Connect(function()
-        -- only revert if not active (ON)
-        if not btn.Text:find("ON") then
-            TweenService:Create(btn, TweenInfo.new(0.2), {
-                BackgroundColor3 = Color3.fromRGB(60, 60, 80)
-            }):Play()
+RunService.Heartbeat:Connect(function()
+    if not godOn then return end
+    pcall(function()
+        local char = lp.Character
+        if char then
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if hum then
+                hum.MaxHealth = math.huge
+                hum.Health = math.huge
+            end
         end
     end)
-end
+end)
 
-addHover(GodBtn)
-addHover(SpeedBtn)
-addHover(FlyBtn)
+-- SPEED
+spdBtn.MouseButton1Click:Connect(function()
+    spdOn = not spdOn
+    spdBtn.BackgroundColor3 = spdOn and Color3.fromRGB(40,160,70) or Color3.fromRGB(50,50,70)
+    spdBtn.Text = spdOn and "⚡ Speed: ON" or "⚡ Speed: OFF"
+end)
 
-print("✅ Cheat GUI Loaded! Check your screen.")
+RunService.Heartbeat:Connect(function()
+    if not spdOn then return end
+    pcall(function()
+        local char = lp.Character
+        if char then
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if hum then hum.WalkSpeed = 100 end
+        end
+    end)
+end)
+
+-- FLY
+flyBtn.MouseButton1Click:Connect(function()
+    flyOn = not flyOn
+    flyBtn.BackgroundColor3 = flyOn and Color3.fromRGB(40,160,70) or Color3.fromRGB(50,50,70)
+    flyBtn.Text = flyOn and "🚀 Fly: ON" or "🚀 Fly: OFF"
+
+    local char = lp.Character
+    if not char then return end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not root or not hum then return end
+
+    if flyOn then
+        hum.PlatformStand = true
+        bv = Instance.new("BodyVelocity")
+        bv.MaxForce = Vector3.new(1e9,1e9,1e9)
+        bv.Velocity = Vector3.zero
+        bv.Parent = root
+        bg = Instance.new("BodyGyro")
+        bg.MaxTorque = Vector3.new(1e9,1e9,1e9)
+        bg.D = 100
+        bg.Parent = root
+    else
+        hum.PlatformStand = false
+        if bv then bv:Destroy() end
+        if bg then bg:Destroy() end
+    end
+end)
+
+RunService.Heartbeat:Connect(function()
+    if not flyOn or not bv or not bg then return end
+    pcall(function()
+        local cam = workspace.CurrentCamera
+        local dir = Vector3.zero
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then dir += cam.CFrame.LookVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then dir -= cam.CFrame.LookVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then dir -= cam.CFrame.RightVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then dir += cam.CFrame.RightVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then dir += Vector3.new(0,1,0) end
+        if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then dir -= Vector3.new(0,1,0) end
+        bv.Velocity = dir.Magnitude > 0 and dir.Unit * 60 or Vector3.zero
+        bg.CFrame = cam.CFrame
+    end)
+end)
+
+-- CLOSE
+closeBtn.MouseButton1Click:Connect(function()
+    gui:Destroy()
+end)
+
+print("✅ GUI Loaded!")
