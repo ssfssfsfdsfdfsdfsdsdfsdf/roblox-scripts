@@ -1,5 +1,5 @@
 -- POWERS MENU
--- Invisible | Speed | Fly | NoClip | Anti-Fling
+-- Invisible (local only) | Speed (fixed) | Fly (improved) | NoClip (robust) | Anti-Fling
 
 local Players          = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -44,7 +44,7 @@ local function getHuman()
 end
 
 -- =====================
--- INVISIBLE
+-- INVISIBLE (local only)
 -- =====================
 local function applyInvisible(on)
     local char = player.Character
@@ -65,8 +65,7 @@ local function applyInvisible(on)
 end
 
 -- =====================
--- SPEED
--- FIX: loop every Heartbeat because games reset WalkSpeed each frame
+-- SPEED (fixed – uses RenderStepped to override game resets)
 -- =====================
 local function stopSpeed()
     if speedConnection then
@@ -81,14 +80,14 @@ end
 
 local function startSpeed()
     stopSpeed()
-    speedConnection = RunService.Heartbeat:Connect(function()
+    -- RenderStepped runs before physics, making it harder for the game to reset
+    speedConnection = RunService.RenderStepped:Connect(function()
         local hum = getHuman()
-        if not hum then return end
-        pcall(function()
-            if hum.WalkSpeed ~= WALK_SPEED then
+        if hum and powers.speed then
+            pcall(function()
                 hum.WalkSpeed = WALK_SPEED
-            end
-        end)
+            end)
+        end
     end)
 end
 
@@ -97,7 +96,7 @@ local function applySpeed(on)
 end
 
 -- =====================
--- FLY
+-- FLY (improved stability)
 -- =====================
 local function stopFly()
     if flyConnection   then flyConnection:Disconnect()                    flyConnection   = nil end
@@ -135,25 +134,30 @@ local function startFly()
     flyBodyGyro.Parent    = hrp
 
     flyConnection = RunService.Heartbeat:Connect(function()
+        if not powers.fly then return end
         local hrpNow = getHRP()
-        if not hrpNow or not powers.fly then stopFly() return end
-        pcall(function()
-            local cf  = camera.CFrame
-            local dir = Vector3.zero
-            if UserInputService:IsKeyDown(Enum.KeyCode.W) then dir = dir + cf.LookVector  end
-            if UserInputService:IsKeyDown(Enum.KeyCode.S) then dir = dir - cf.LookVector  end
-            if UserInputService:IsKeyDown(Enum.KeyCode.A) then dir = dir - cf.RightVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.D) then dir = dir + cf.RightVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.E) or
-               UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-                dir = dir + Vector3.new(0, 1, 0)
-            end
-            if UserInputService:IsKeyDown(Enum.KeyCode.Q) then
-                dir = dir - Vector3.new(0, 1, 0)
-            end
-            flyBodyVelocity.Velocity = dir.Magnitude > 0 and dir.Unit * FLY_SPEED or Vector3.zero
-            flyBodyGyro.CFrame       = CFrame.new(Vector3.zero, cf.LookVector)
-        end)
+        local humNow = getHuman()
+        if not hrpNow or not humNow then stopFly() return end
+
+        -- Keep PlatformStand true (prevent falling)
+        pcall(function() humNow.PlatformStand = true end)
+
+        local cf  = camera.CFrame
+        local dir = Vector3.zero
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then dir = dir + cf.LookVector  end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then dir = dir - cf.LookVector  end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then dir = dir - cf.RightVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then dir = dir + cf.RightVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.E) or
+           UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+            dir = dir + Vector3.new(0, 1, 0)
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.Q) then
+            dir = dir - Vector3.new(0, 1, 0)
+        end
+
+        flyBodyVelocity.Velocity = dir.Magnitude > 0 and dir.Unit * FLY_SPEED or Vector3.zero
+        flyBodyGyro.CFrame       = CFrame.new(Vector3.zero, cf.LookVector)
     end)
 end
 
@@ -162,8 +166,26 @@ local function applyFly(on)
 end
 
 -- =====================
--- NOCLIP
+-- NOCLIP (robust – uses CollisionGroup to bypass all collisions)
 -- =====================
+local NO_CLIP_GROUP = "NoClipGroup"
+local function setupCollisionGroup()
+    local physicsService = game:GetService("PhysicsService")
+    local success = pcall(function()
+        if not physicsService:IsCollisionGroupRegistered(NO_CLIP_GROUP) then
+            physicsService:RegisterCollisionGroup(NO_CLIP_GROUP)
+        end
+        -- Make group not collide with anything except itself (which is fine)
+        physicsService:CollisionGroupSetCollidable(NO_CLIP_GROUP, NO_CLIP_GROUP, false)
+        for _, otherGroup in ipairs(physicsService:GetCollisionGroups()) do
+            if otherGroup ~= NO_CLIP_GROUP then
+                physicsService:CollisionGroupSetCollidable(NO_CLIP_GROUP, otherGroup, false)
+            end
+        end
+    end)
+    return success
+end
+
 local function stopNoclip()
     if noclipConnection then
         noclipConnection:Disconnect()
@@ -173,19 +195,20 @@ local function stopNoclip()
     if char then
         for _, p in ipairs(char:GetDescendants()) do
             if p:IsA("BasePart") then
-                pcall(function() p.CanCollide = true end)
+                pcall(function() p.CollisionGroup = "Default" end)
             end
         end
     end
 end
 
 local function startNoclip()
+    setupCollisionGroup()
     noclipConnection = RunService.Stepped:Connect(function()
         local char = player.Character
         if not char then return end
         for _, p in ipairs(char:GetDescendants()) do
             if p:IsA("BasePart") then
-                pcall(function() p.CanCollide = false end)
+                pcall(function() p.CollisionGroup = NO_CLIP_GROUP end)
             end
         end
     end)
@@ -196,8 +219,7 @@ local function applyNoclip(on)
 end
 
 -- =====================
--- ANTI-FLING
--- Zeros velocity if it spikes above a threshold (fling detection)
+-- ANTI-FLING (unchanged)
 -- =====================
 local function stopAntiFling()
     if antiflingConn then
@@ -240,7 +262,7 @@ player.CharacterAdded:Connect(function(char)
 end)
 
 -- =====================
--- GUI SETUP
+-- GUI SETUP (unchanged, but kept for completeness)
 -- =====================
 local existing = player.PlayerGui:FindFirstChild("PowersMenu")
 if existing then existing:Destroy() end
